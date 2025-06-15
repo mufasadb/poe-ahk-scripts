@@ -1,0 +1,59 @@
+{
+  "popups": [
+    {
+      "module": "cheat-sheets",
+      "category": "leveling",
+      "title": "Leveling Guide",
+      "hotkey": "F1",
+      "enabled": true
+    },
+    {
+      "module": "cheat-sheets", 
+      "category": "atlas",
+      "title": "Atlas Guide",
+      "hotkey": "F2",
+      "enabled": true
+    },
+    {
+      "module": "vendor-search",
+      "category": "movement-boots", 
+      "title": "Boot Search",
+      "hotkey": "F3",
+      "enabled": true
+    },
+    {
+      "module": "dashboard",
+      "category": "trading-economy",
+      "title": "Trading Tools", 
+      "hotkey": "F4",
+      "enabled": true
+    },
+    {
+      "module": "vendor-recipes",
+      "category": "currency",
+      "title": "Currency Recipes",
+      "hotkey": "F5", 
+      "enabled": true
+    },
+    {
+      "module": "cheat-sheets",
+      "category": "heist",
+      "title": "Heist Guide",
+      "hotkey": "F6",
+      "enabled": false
+    },
+    {
+      "module": "builds", 
+      "category": "league-start",
+      "title": "League Start Builds",
+      "hotkey": "F7",
+      "enabled": false
+    }
+  ],
+  "settings": {
+    "popup_width": 700,
+    "popup_height": 500,
+    "always_on_top": true,
+    "api_base_url": "https://beachys-poe-helper.com/api/popup"
+  }
+}

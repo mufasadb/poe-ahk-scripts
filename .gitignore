@@ -1,0 +1,18 @@
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# AutoHotkey
+*.exe
+*.compiled
+
+# Position files
+positions.ini
+popups.json
+
+# Logs
+*.log
+
+# Cache files
+cache/

@@ -1,0 +1,85 @@
+POE AutoHotkey Scripts - Setup Guide
+====================================
+
+Thank you for downloading the POE AutoHotkey scripts!
+
+REQUIREMENTS:
+- AutoHotkey v2.0+ (Download: https://www.autohotkey.com/download/)
+- Windows 10/11 with WebView2 Runtime
+- Internet connection for content loading
+- Required libraries from ahk2_lib GitHub repository
+
+QUICK START:
+1. Download AutoHotkey v2.0+ from https://www.autohotkey.com/download/
+2. Download the script you want to use (recommended: poe-web-overlay.ahk)
+3. Set up libraries (see detailed instructions below)
+4. Double-click the .ahk file to run
+
+LIBRARY SETUP (Required for poe-web-overlay.ahk):
+1. Create a "Lib" folder next to the script file
+2. Go to https://github.com/thqby/ahk2_lib
+3. Download the repository as ZIP
+4. Extract WebView2/ folder to your Lib/ folder
+5. Extract ComVar.ahk to your Lib/ folder
+
+Your folder structure should look like:
+poe-web-overlay.ahk
+Lib/
+  WebView2/
+    WebView2.ahk
+    (other WebView2 files)
+  ComVar.ahk
+
+FILES INCLUDED:
+- poe-web-overlay.ahk              - Modern web-based overlay script (RECOMMENDED)
+- poe-popup-helper-consolidated.ahk - Self-contained script with built-in content
+- poe-popup-config.json            - Configuration file for customization
+- README.md                        - Detailed documentation
+- SETUP.txt                        - This setup guide
+
+DEFAULT HOTKEYS:
+F1 - Leveling Guide
+F2 - Atlas Guide  
+F3 - Boot Search Templates
+F4 - Trading Tools
+F5 - Currency Recipes
+Ctrl+Alt+H - Show help
+Ctrl+Alt+M - Toggle Move Mode (poe-web-overlay.ahk only)
+Ctrl+Alt+R - Reload script
+
+FEATURES:
+- Hotkey-triggered overlays for instant access to guides
+- Web-based UI with modern interface (poe-web-overlay.ahk)
+- Draggable positioning with Move Mode
+- Dynamic content loading from server
+- Offline fallback with cached content
+- Multiple content categories
+
+TROUBLESHOOTING:
+- Ensure AutoHotkey v2.0+ is installed (not v1.x)
+- Check that WebView2 Runtime is installed (comes with Windows 11)
+- Verify the Lib folder structure is correct
+- Run as administrator if you encounter permission issues
+- Check Windows antivirus settings if scripts won't run
+
+CONTENT CATEGORIES:
+- Leveling Guides - Step-by-step progression paths
+- Atlas Strategies - Map progression and optimization
+- Trading Templates - Pre-filled search strings for trade site
+- Vendor Recipes - Currency and crafting recipes
+- League Mechanics - Sanctum, Expedition, Heist guides
+- Quick References - Cheat sheets and essential information
+
+CUSTOMIZATION:
+You can modify the scripts to:
+- Change hotkey bindings
+- Adjust overlay sizes and positions
+- Add custom content categories
+- Modify server endpoints
+
+For more detailed information, see README.md
+
+Enjoy your enhanced POE experience!
+
+Version: 2.1
+Repository: https://github.com/[your-username]/poe-ahk-scripts
