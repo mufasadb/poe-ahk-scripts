@@ -148,7 +148,6 @@ ShowOverlay(popup, *) {
     if PopupWindows.Has(popupId) {
         try {
             win := PopupWindows[popupId]
-            win["wv"] := 0, win["wvc"] := 0
             win["gui"].Destroy()
         }
         PopupWindows.Delete(popupId)
