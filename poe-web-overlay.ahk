@@ -21,7 +21,6 @@ Global MoveMode := false
 LoadConfig()
 LoadPositions()
 RegisterHotkeys()
-OnMessage(0x201, WM_LBUTTONDOWN) ; For dragging windows
 TrayTip(AppTitle, "Loaded! Press Ctrl+Alt+H for help.", 1)
 
 ; --- Core Hotkeys ---
@@ -86,17 +85,18 @@ LoadConfig() {
         req.WaitForResponse(5) ; 5 second timeout
         if (req.Status == 200) {
             jsonString := req.ResponseText
-            FileWrite(jsonString, localCacheFile, "UTF-8") ; Cache the fresh config
+            try FileDelete(localCacheFile)  ; Delete existing file if it exists
+            FileAppend(jsonString, localCacheFile, "UTF-8-RAW") ; Cache the fresh config
             Config["popups"] := JsonParse(jsonString) ; Use server config
             TrayTip(AppTitle, "Configuration updated from server", 1)
         } else {
             throw Error("Server returned status " . req.Status)
         }
-    } catch e {
+    } catch as e {
         ; Try to load from local cache
         try {
-            jsonString := FileRead(localCacheFile, "UTF-8")
-            Config["popups"] := JsonParse(jsonString)
+            cachedJson := FileRead(localCacheFile, "UTF-8")
+            Config["popups"] := JsonParse(cachedJson)
             TrayTip(AppTitle, "Using cached configuration", 1)
         } catch {
             ; Fall back to base config (already set above)
@@ -133,9 +133,9 @@ RegisterHotkeys() {
     for _, popup in Config["popups"] {
         if popup.HasOwnProp("hotkey") {
             try {
-                Hotkey(popup["hotkey"], ShowOverlay.Bind(popup))
-            } catch e {
-                TrayTip(AppTitle, "Error registering hotkey " . popup["hotkey"], 3)
+                Hotkey(popup.hotkey, ShowOverlay.Bind(popup))
+            } catch as e {
+                TrayTip(AppTitle, "Error registering hotkey " . popup.hotkey, 3)
             }
         }
     }
@@ -146,33 +146,43 @@ ShowOverlay(popup, *) {
     popupId := GetPopupId(popup)
     
     if PopupWindows.Has(popupId) {
+        ; Window exists, destroy it (toggle off)
         try {
             win := PopupWindows[popupId]
             win["gui"].Destroy()
+            PopupWindows.Delete(popupId)
+        } catch as e {
+            ; If destroy fails, still remove from map
+            PopupWindows.Delete(popupId)
         }
-        PopupWindows.Delete(popupId)
     } else {
+        ; Window doesn't exist, create it (toggle on)
         CreateWebOverlay(popupId, popup)
     }
 }
 
 CreateWebOverlay(popupId, popup) {
-    url := WebBaseUrl . "/" . popup["module"]
-    if popup.HasOwnProp("category") && popup["category"] != "" {
-        url .= "/" . popup["category"]
+    url := WebBaseUrl . "/" . popup.module
+    if popup.HasOwnProp("category") && popup.category != "" {
+        url .= "/" . popup.category
     }
     
-    myGui := Gui("+AlwaysOnTop -Caption +ToolWindow", popup["title"])
+    myGui := Gui("+AlwaysOnTop -Caption +ToolWindow", popup.title)
     
     pos := Config["positions"].Has(popupId) ? Config["positions"][popupId] : {x: "Center", y: "Center"}
-    myGui.Show("w" . popup["width"] . " h" . popup["height"] . " x" . pos["x"] . " y" . pos["y"] . " Hide")
+    myGui.Show("w" . popup.width . " h" . popup.height . " x" . pos.x . " y" . pos.y . " NoActivate")
 
     try {
         wvc := WebView2.CreateControllerAsync(myGui.Hwnd).await2()
         wv := wvc.CoreWebView2
-        wv.DefaultBackgroundColor := 0x00FFFFFF 
+        ; wv.DefaultBackgroundColor := 0x00FFFFFF  ; Commented out - transparent background can cause issues
         wv.Navigate(url)
-    } catch e {
+        
+        ; In move mode, make the WebView2 ignore mouse input so dragging works
+        if (MoveMode) {
+            wvc.IsDefaultDownloadDialogEnabled := false
+        }
+    } catch as e {
         myGui.Destroy()
         MsgBox("Failed to create WebView2 control: " . e.Message, AppTitle, 48)
         return
@@ -182,11 +192,19 @@ CreateWebOverlay(popupId, popup) {
     
     if (!MoveMode) {
         WinSetTransparent(170, hwnd)
-        WinSetExStyle("+0x20", hwnd)
+        WinSetExStyle("+0x20", hwnd)  ; Make click-through
     }
     
     myGui.Show()
-    PopupWindows[popupId] := {gui: myGui, hwnd: hwnd, wvc: wvc, wv: wv, popup: popup}
+    
+    ; Store the window reference
+    winData := Map()
+    winData["gui"] := myGui
+    winData["hwnd"] := hwnd
+    winData["wvc"] := wvc
+    winData["wv"] := wv
+    winData["popup"] := popup
+    PopupWindows[popupId] := winData
 }
 
 ; --- Game Macros ---
@@ -207,16 +225,36 @@ ToggleMoveMode() {
     Global MoveMode := !MoveMode
     if (MoveMode) {
         TrayTip(AppTitle, "Move Mode: ON`nOverlays are now solid and can be dragged.`nPress Ctrl+Alt+M to exit and save positions.", 1)
-        for _, win in PopupWindows {
+        for id, win in PopupWindows {
+            ; Hide the WebView2 control
+            win["wvc"].IsVisible := false
+            
+            ; Create a text control showing the title
+            textCtrl := win["gui"].Add("Text", "x0 y0 w" . win["popup"].width . " h" . win["popup"].height . " Center +0x200 BackgroundGray", win["popup"].title)
+            
+            ; Make window solid and draggable
             WinSetTransparent("Off", win["hwnd"])
-            WinSetExStyle("-0x20", win["hwnd"])
+            WinSetExStyle("-0x20", win["hwnd"])  ; Remove click-through
+            
+            ; Enable dragging when clicking the text control
+            hwnd := win["hwnd"]  ; Capture hwnd in local variable
+            textCtrl.OnEvent("Click", (*) => PostMessage(0xA1, 2, 0, , hwnd))
         }
     } else {
         TrayTip(AppTitle, "Move Mode: OFF`nOverlays are back to normal.", 1)
         SavePositions()
-        for _, win in PopupWindows {
+        for id, win in PopupWindows {
+            ; Destroy all controls except WebView2
+            for hwnd in WinGetControlsHwnd(win["hwnd"]) {
+                try ControlHide(hwnd)
+            }
+            
+            ; Show the WebView2 control again
+            win["wvc"].IsVisible := true
+            
+            ; Restore transparency
             WinSetTransparent(170, win["hwnd"])
-            WinSetExStyle("+0x20", win["hwnd"])
+            WinSetExStyle("+0x20", win["hwnd"])  ; Re-enable click-through
         }
     }
 }
@@ -227,12 +265,19 @@ WM_LBUTTONDOWN(wParam, lParam, msg, hwnd) {
     }
 }
 
+; GUI drag handler for move mode
+GuiDragHandler(guiObj, *) {
+    if MoveMode {
+        PostMessage(0xA1, 2, 0, , guiObj.Hwnd)
+    }
+}
+
 
 ; --- Utilities ---
 GetPopupId(popup) {
-    id := popup["module"]
-    if popup.HasOwnProp("category") && popup["category"] != "" {
-        id .= "_" . popup["category"]
+    id := popup.module
+    if popup.HasOwnProp("category") && popup.category != "" {
+        id .= "_" . popup.category
     }
     return id
 }
@@ -244,7 +289,14 @@ JsonParse(json) {
         doc.write('<meta http-equiv="X-UA-Compatible" content="IE=Edge">')
         doc.close()
     }
-    return doc.parentWindow.JSON.parse(json)
+    jsArray := doc.parentWindow.JSON.parse(json)
+    
+    ; Convert JavaScript array to AutoHotkey array
+    ahkArray := []
+    loop jsArray.length {
+        ahkArray.Push(jsArray[A_Index - 1])  ; JS arrays are 0-based
+    }
+    return ahkArray
 }
 
 ShowHelp() {
@@ -253,9 +305,12 @@ ShowHelp() {
     helpText .= "`n~ (Tilde) - Logout (/logout)"
     helpText .= "`nF5 - Return to Hideout (/hideout)"
     helpText .= "`n`n--- Popup Overlays ---"
+
     for _, popup in Config["popups"] {
-        if popup.HasOwnProp("hotkey")
-            helpText .= "`n" . popup["hotkey"] . " - " . popup["title"]
+        ; Debug: Check each popup
+        if IsObject(popup) && popup.HasOwnProp("hotkey") {
+            helpText .= "`n" . popup.hotkey . " - " . popup.title
+        }
     }
     helpText .= "`n`n--- Configuration ---"
     helpText .= "`n^!c - Configure Hotkeys"
@@ -282,8 +337,9 @@ ConfigureHotkeys() {
     configText .= "Popup Overlays:`n"
     
     for _, popup in Config["popups"] {
-        if popup.HasOwnProp("hotkey")
-            configText .= popup["hotkey"] . " - " . popup["title"] . "`n"
+        if popup.HasOwnProp("hotkey") {
+            configText .= popup.hotkey . " - " . popup.title . "`n"
+        }
     }
     
     configText .= "`nTo modify hotkeys, edit the config at:`n"
